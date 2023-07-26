@@ -6,68 +6,78 @@
 #include <FS.h> // TODO - mudar o sistema de arquivos para o LittleFS
 
 DNSServer dnsServer;
-AsyncWebServer server(80); // declara a porta 80 para o WebServer
-WebSocketsServer webSocket = WebSocketsServer(81); // declara a porta 81 para o WebSocketServer
+AsyncWebServer server(80);
+WebSocketsServer webSocket = WebSocketsServer(81);
 
-int leds[] = {0, 0, 0}; // string utilizada para guardar os estados dos leds (0 apagado, 1 aceso)
+// array utilizado para definir quais portas serão usadas
+uint8_t ports[] = {D3, D6, D1};
 
-// função para aplicar os estados dos leds nas portas correspondentes
-// TODO - melhorar a lógica para remover as condicionais (converter o char para int)
+// TODO - criar array dinamicamente, conforme tamanho do array das portas
+uint8_t leds[] = {0, 0, 0};
+
 void changeLedStatus() {
-  analogWrite(D1, leds[0]);
-  analogWrite(D3, leds[1]);
-  analogWrite(D6, leds[2]);
-  Serial.print("led 1 -> ");
-  Serial.println(leds[0]);
-  Serial.print("led 2 -> ");
-  Serial.println(leds[1]);
-  Serial.print("led 3 -> ");
-  Serial.println(leds[2]);
-  
+  Serial.println("Atualizando portas...");
+  for (uint8_t index = 0; index < sizeof(ports) / sizeof(uint8_t); index++) {
+    analogWrite(ports[index], leds[index]);
+    Serial.print("Porta: ");
+    Serial.print(ports[index]);
+    Serial.print(" - Valor: ");
+    Serial.println(leds[index]);
+  }
 }
 
-// função que trata os eventos do WebSocketServer
 void webSocketEvent(uint8_t num, WStype_t type, uint8_t * payload, size_t length) {
   int8_t index;
-  int strength;
-  String payloadString;
-  char ledsString[8];
-    
+
   switch(type) {
-    
-// em caso de deconexão, apenas depura uma mensagem de desconexão
+  
     case WStype_DISCONNECTED:
       Serial.printf("[%u] Desconectado!\n", num);
       break;
 
-// assim que recebe uma nova conexão, envia o estado dos leds para o novo cliente
-// TODO - verificar a consistência da informação recebida, para evitar erros
     case WStype_CONNECTED:
       {
         IPAddress ip = webSocket.remoteIP(num);
         Serial.printf("[%u] Conexão estabelecida com %d.%d.%d.%d url: %s\n", num, ip[0], ip[1], ip[2], ip[3], payload);
-        Serial.print("Enviando leds: ");
-        sprintf(ledsString, "%03d%03d%03d", leds[0], leds[1], leds[2]);
-        webSocket.sendTXT(num, ledsString); // envia o estado dos leds para o novo cliente (num)
+        Serial.print("Enviando leds...");
+      
+        webSocket.sendBIN(num, leds, sizeof(leds)); // envia o estado dos leds para o novo cliente (num)
       }
       break;
 
-// quando recebe uma solicitação de alteração do estado dos leds por algum cliente
     case WStype_TEXT:
       Serial.printf("[%u] get Text: %s\n", num, payload);
-// altera a variável que guarda o estado dos leds conforme solicitação do cliente
-// TODO - melhorar a lógica para evitar as condicionais
-      payloadString = ((char*)payload);
-      index = payloadString.charAt(0) - '0';
-      strength = atoi(payloadString.substring(1).c_str());
-      leds[index] = strength;
-      sprintf(ledsString, "%03d%03d%03d", leds[0], leds[1], leds[2]);
-      Serial.print("Informação recebida, enviando leds: ");
-      Serial.println(ledsString);
+      Serial.println("Erro! Recebido texto (esperado binário)");
+      break;
+
+    case WStype_BIN:
+      // recebe dois bytes (1º byte LED, 2º byte VALOR)
+      // TODO - verificar a consistência da informação recebida, para evitar erros
+      Serial.printf("[WSc] get binary length: %u\n", length);
+
+      index = payload[0];
+      leds[index] = payload[1];
       changeLedStatus();
-      webSocket.broadcastTXT(ledsString); // faz um broadcast do novo estado dos leds para TODOS os clientes
+
+      // envia o estado dos leds para todos os clientes (broadcast)
+      webSocket.broadcastBIN(leds, sizeof(leds));
       break;
   }
+}
+
+AsyncWebServerResponse* getResponse(const String& requestedFile) {
+  AsyncWebServerRequest* response = nullptr;
+
+  if (requestedFile.equals("/estilos.css"))
+    return response->beginResponse(SPIFFS, "/estilos.css", "text/css");
+  
+  if (requestedFile.equals("/script.js"))
+    return response->beginResponse(SPIFFS, "/script.js", "text/javascript");
+  
+  if (requestedFile.equals("/logo-fundo-escuro.png"))
+    return response->beginResponse(SPIFFS, "/logo-fundo-escuro.png", "image/png");
+
+  return response->beginResponse(SPIFFS, "/index.html", "text/html");
 }
 
 class CaptiveRequestHandler : public AsyncWebHandler {
@@ -82,43 +92,33 @@ public:
 
   void handleRequest(AsyncWebServerRequest *request) {
     String requestedFile = request->url();
+    AsyncWebServerResponse *response = getResponse(requestedFile);
+    request->send(response);
+    Serial.print("Arquivo requisitado -> ");
     Serial.println(requestedFile);
-  
-    AsyncWebServerResponse *response = nullptr;  // declara variável que será usada na resposta
-
-// verifica qual arquivo está sendo requisitado, e o envia de acordo
-// TODO - melhorar a lógica para evitar o encadeamento de condicionais
-    if (requestedFile.equals("/estilos.css")) {
-      response = request->beginResponse(SPIFFS, "/estilos.css", "text/css");
-    } else if (requestedFile.equals("/script.js")) {
-      response = request->beginResponse(SPIFFS, "/script.js", "text/javascript");
-    } else if (requestedFile.equals("/logo-fundo-escuro.png")) {
-      response = request->beginResponse(SPIFFS, "/logo-fundo-escuro.png", "image/png");
-    } else {
-      response = request->beginResponse(SPIFFS, "/index.html", "text/html");
-    }
-  
-    request->send(response); // envia o arquivo
   }
 };
 
 void setup(){
+  Serial.begin(115200);
+  Serial.setDebugOutput(true); // habilita as saídas de depuração da biblioteca wi-fi
+  delay(1000);
+  Serial.flush();
+  Serial.println();
 
-// pinagem das portas dos leds
-// os números NÃO correspondem aos gravados na placa!!!
-// TODO - listar todas as portas em constantes
-  pinMode(D1, OUTPUT);
-  pinMode(D3, OUTPUT);
-  pinMode(D6, OUTPUT);
-  Serial.begin(115200); // habilita a saída de depuração
-  Serial.setDebugOutput(true); // habilita as saídas de depuração da biblioteca wi-fi (o padrão é true e ela seta para false)
+  for (uint8_t index = 0; index < sizeof(ports) / sizeof(uint8_t); index++) {
+    pinMode(ports[index], OUTPUT);
+    Serial.print("Definindo a porta ");
+    Serial.print(ports[index]);
+    Serial.println(" em modo de SAÍDA...");
+  }
 
-  WiFi.softAP("MAQUETE_WIFI"); // configura o Access Point
-  dnsServer.start(53, "*", WiFi.softAPIP()); // configura o servidor de DNS (porta 53) apontando para o Access Point
-  server.addHandler(new CaptiveRequestHandler()).setFilter(ON_AP_FILTER); // direciona todos os requests para o CaptiveRequestHandler
+  WiFi.softAP("MAQUETE_WIFI");
+  dnsServer.start(53, "*", WiFi.softAPIP());
+  server.addHandler(new CaptiveRequestHandler()).setFilter(ON_AP_FILTER);
 
-  webSocket.onEvent(webSocketEvent); // direciona todos os eventos do servidor WebSocket para o webSocketEvent
-  webSocket.begin(); // inicia o sevidor WebSocket
+  webSocket.onEvent(webSocketEvent);
+  webSocket.begin();
 
 // inicia o sistema de arquivos e aguarda sua montagem para só então iniciar o servidor web
 // (para evitar que o servidor esteja disponível antes dos arquivos)

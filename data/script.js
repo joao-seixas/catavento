@@ -1,15 +1,10 @@
-const sliders = document.querySelectorAll('.range');
 const connectionStatus = document.getElementById('status');
+const switches = document.querySelectorAll('.switch');
+const buildings = [document.getElementById('casa1'), document.getElementById('catavento'), document.getElementById('casa2')];
 let socket;
-let leds = '';
+let leds = [];
 let timer = 0;
 let timerInterval = null;
-
-sliders.forEach((slider, index) => slider.addEventListener('change', sliderChange, false));
-
-function sliderChange({target}) {
-    console.log(target.value);
-}
 
 function startTimer() {
     timer = 6;
@@ -32,16 +27,12 @@ function addTimer() {
 function onPageLoad() {
     connectionStatus.textContent = 'Conectando...';
     connectionStatus.style.color = 'yellow';
-    try {
-        socket = new WebSocket('ws://192.168.4.1:81');
-        socket.addEventListener('open', socketOpen, false);
-        socket.addEventListener('message', socketReceive, false);
-        socket.addEventListener('close', socketClose, false);
-        socket.addEventListener('error', socketError, false);
-    }
-    catch (error) {
-        socketError(error);
-    }
+    socket = new WebSocket('ws://192.168.4.1:81');
+    socket.binaryType = "arraybuffer";
+    socket.addEventListener('open', socketOpen, false);
+    socket.addEventListener('message', socketReceive, false);
+    socket.addEventListener('close', socketClose, false);
+    socket.addEventListener('error', socketError, false);
 }
 
 function socketError(error) {
@@ -56,32 +47,38 @@ function socketClose() {
 }
 
 function socketReceive({data}) {
-    console.log(data);
-    // floors.forEach((floor, index) => {
-    //     if (floor[0].classList.contains('led-off') && data[index] == '1') {
-    //         floor[0].classList.remove('led-off');
-    //         floor[1].classList.remove('led-off');
-    //     }
-    //     if (!floor[0].classList.contains('led-off') && data[index] == '0') {
-    //         floor[0].classList.add('led-off');
-    //         floor[1].classList.add('led-off');
-    //     }
-    // });
+    const receivedData = new DataView(data);
+
+    for (let index = 0; index < receivedData.byteLength; index++) {
+        leds[index] = receivedData.getUint8(index);
+    }
+
+    updateGUI();
+}
+
+function updateGUI() {
+    for (let index = 0; index < leds.length; index++) {
+        switches[index].checked = leds[index] === 255;
+        if (buildings[index].classList.contains('house')) {
+            leds[index] === 255 ? buildings[index].classList.remove('dark') : buildings[index].classList.add('dark');
+        } else
+        if (buildings[index].classList.contains('windvane')) {
+            leds[index] === 255 ? buildings[index].classList.remove('paused') : buildings[index].classList.add('paused');
+        }
+    }
 }
 
 function socketOpen() {
     connectionStatus.textContent = 'Conectado.';
     connectionStatus.style.color = 'green';
-    console.log(socket);
 }
 
-function toggleLed({target: {dataset, checked}}) {
-    let origin = dataset.origin;
-    let itemSate = sliders[Number(origin)].value.padStart(3, '0');
-    let payload = origin + itemSate;
+function toggleLed(event) {
+    event.preventDefault();
+    const origin = Number(event.target.dataset.origin);
+    const buffer = new ArrayBuffer(2);
+    const payload = new Uint8Array(buffer);
 
-    console.log(origin);
-    console.log(itemSate);
- 
+    payload.set([origin, leds[origin] === 0 ? 255 : 0], 0);
     socket.readyState === 1 ? socket.send(payload) : alert('Sem conexão com o servidor!');
 }

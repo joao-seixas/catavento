@@ -1,5 +1,6 @@
 * {
     box-sizing: border-box;
+    user-select: none;
 }
 
 html {
@@ -22,30 +23,6 @@ header img {
     max-width: min(40%, 300px);
 }
 
-#div-building {
-    display: inline-block;
-    border-radius: 20px;
-    margin-top: 10px;
-    background-color: #ffe5be;
-    padding: 30px;
-    box-shadow: 10px 10px 5px 0px rgba(0,0,0,0.75);
-    width: min(80%, 400px);
-}
-
-#building {
-    max-height: 60vh;
-    width: 100%;
-}
-
-.floor-1, .floor-2, .floor-3 {
-    transition: 0.5s;
-}
-
-.led-off {
-    opacity: 0;
-    transition: 0.3s;
-}
-
 footer {
     position: fixed;
     bottom: 0;
@@ -56,103 +33,114 @@ footer {
     padding: 10px;
 }
 
+.controles {
+  width: min(90%, 800px);
+  margin: auto;
+  margin-top: 20px;
+}
+
+.controle {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  justify-content: space-evenly;
+  margin: 20px;
+}
+
+.control-label {
+  font-size: 1.3rem;
+  font-weight: bold;
+  justify-self: right;
+}
+
 .switch {
-    position: relative;
-    display: inline-block;
-    width: 60px;
-    height: 34px;
-    justify-self: center;
-  }
-  
-  .switch input { 
-    opacity: 0;
-    width: 0;
-    height: 0;
-  }
-  
-  .slider {
-    position: absolute;
-    cursor: pointer;
-    top: 0;
-    left: 0;
-    right: 0;
-    bottom: 0;
-    background-color: #ccc;
-    -webkit-transition: .4s;
-    transition: .4s;
-  }
-  
-  .slider:before {
-    position: absolute;
-    content: "";
-    height: 26px;
-    width: 26px;
-    left: 4px;
-    bottom: 4px;
-    background-color: white;
-    -webkit-transition: .4s;
-    transition: .4s;
-  }
-  
-  input:checked + .slider {
-    background-color: #2196F3;
-  }
-  
-  input:focus + .slider {
-    box-shadow: 0 0 1px #2196F3;
-  }
-  
-  input:checked + .slider:before {
-    -webkit-transform: translateX(26px);
-    -ms-transform: translateX(26px);
-    transform: translateX(26px);
-  }
-  
-  .slider.round {
-    border-radius: 34px;
-  }
-  
-  .slider.round:before {
-    border-radius: 50%;
+  display: block;
+  margin-bottom: 1.5em;
+  font-size: 1.4em;
+  background-color: rgba(0,0,0,0.7);
+  border-radius: 0.75em;
+  box-shadow: 0.125em 0.125em 0 0.125em rgba(0,0,0,0.3) inset;
+  color: #fdea7b;
+  display: inline-flex;
+  align-items: center;
+  margin: auto;
+  padding: 0.15em;
+  width: 3em;
+  height: 1.5em;
+  transition: background-color 0.1s 0.3s ease-out, box-shadow 0.1s 0.3s ease-out;
+  -webkit-appearance: none;
+  -moz-appearance: none;
+  appearance: none;
+}
+
+.switch:before, .switch:after {
+  content: "";
+  display: block;
+}
+
+.switch:before {
+  background-color: #d7d7d7;
+  border-radius: 50%;
+  width: 1.2em;
+  height: 1.2em;
+  transition: background-color 0.1s 0.3s ease-out, transform 0.3s ease-out;
+  z-index: 1;
+}
+
+.switch:after {
+  background: linear-gradient(transparent 50%, rgba(0,0,0,0.15) 0) 0 50% / 50% 100%,
+		repeating-linear-gradient(90deg,#bbb 0,#bbb,#bbb 20%,#999 20%,#999 40%) 0 50% / 50% 100%,
+		radial-gradient(circle at 50% 50%,#888 25%, transparent 26%);
+  background-repeat: no-repeat;
+  border: 0.25em solid transparent;
+  border-left: 0.4em solid #d8d8d8;
+  border-right: 0 solid transparent;
+  transition: border-left-color 0.1s 0.3s ease-out, transform 0.3s ease-out;
+  transform: translateX(-22.5%);
+  transform-origin: 25% 50%;
+  width: 1.2em;
+  height: 1em;
+  box-sizing: border-box;
+}
+/* Checked */
+.switch:checked {
+  background-color: rgba(0,0,0,0.45);
+  box-shadow: 0.125em 0.125em 0 0.125em rgba(0,0,0,0.1) inset;
+}
+
+.switch:checked:before {
+  background-color: currentColor;
+  transform: translateX(125%)
+}
+
+.switch:checked:after {
+  border-left-color: currentColor;
+  transform: translateX(-2.5%) rotateY(180deg);
+}
+
+@keyframes rotation {
+  from {
+    transform: rotate(0deg);
   }
 
-  .controles {
-    width: min(90%, 800px);
-    margin: auto;
-    margin-top: 20px;
+  to {
+    transform: rotate(360deg);
   }
+}
 
-  .controle {
-    display: grid;
-    grid-template-columns: 1fr 1fr;
-    justify-content: space-evenly;
-    gap: 30px;
-  }
+.windvane {
+  animation: rotation 2s linear infinite;
+  transform-origin: 50% 45%;
+}
 
-  .control-label {
-    font-size: 1.3rem;
-    font-weight: bold;
-    justify-self: right;
-  }
+.paused {
+  animation-play-state: paused;
+}
 
-  .range {
-    width: min(300px, 80%);
-    grid-column-start: span 2;
-    justify-self: center;
-    margin-bottom: 50px;
-    margin-top: -10px;
-  }
+.dark {
+  opacity: 0;
+  transition: opacity 0.3s;
+}
 
-  @keyframes rotation {
-    from {
-      transform: rotate(0deg);
-    }
-
-    to {
-      transform: rotate(360deg);
-    }
-  }
-  #catavento {
-    animation: rotation 2s linear infinite;
-    transform-origin: 50% 45%;
-  }
+.house {
+  transition: opacity 0.8s;
+}
