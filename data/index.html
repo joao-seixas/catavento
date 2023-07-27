@@ -8,7 +8,7 @@
   <title>Sua Maquete</title>
 </head>
 
-<body onload="onPageLoad();">
+<body onload="newSocket();">
   <header>
     <img src="./logo-fundo-escuro.png" alt="Sua Maquete" />
   </header>
@@ -66,7 +66,13 @@
       </div>
     </div>
   </main>
-  <footer id="status">Desconectado!</footer>
+  <footer>
+    <span id="status"></span>
+    <div>
+      <span id="action"></span>
+      <span id="countdown"></span>
+    </div>
+  </footer>
   <script src="script.js"></script>
 </body>
 

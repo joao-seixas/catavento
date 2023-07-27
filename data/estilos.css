@@ -25,12 +25,26 @@ header img {
 
 footer {
     position: fixed;
+    display: flex;
+    flex-direction: column;
     bottom: 0;
     left: 0;
     width: 100%;;
     text-align: center;
     color: red;
     padding: 10px;
+}
+
+#status {
+  color: red;
+}
+
+#action {
+  color: yellow;
+}
+
+#countdown {
+  color: yellow;
 }
 
 .controles {

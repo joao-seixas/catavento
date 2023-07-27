@@ -1,49 +1,63 @@
 const connectionStatus = document.getElementById('status');
+const connectionAction = document.getElementById('action');
+const connectionCountdown = document.getElementById('countdown');
 const switches = document.querySelectorAll('.switch');
-const buildings = [document.getElementById('casa1'), document.getElementById('catavento'), document.getElementById('casa2')];
+const buildings = [
+    document.getElementById('casa1'),
+    document.getElementById('catavento'),
+    document.getElementById('casa2')
+];
+
 let socket;
+let timer;
 let leds = [];
-let timer = 0;
-let timerInterval = null;
 
-function startTimer() {
-    timer = 6;
-    timerInterval = setInterval(addTimer, 1000);
-    connectionStatus.textContent = 'Desconectado!';
-    connectionStatus.style.color = 'red';
-}
+function startTimer(time, callbackAction) {
+    
+    clearInterval(timer);
 
-function addTimer() {
-    timer--;
-    connectionStatus.innerHTML = `Desconectado!<br><span style="color: yellow">Tentando reconexão em ${timer} segundos...</span>`;
-    if (timer < 0) {
-        clearInterval(timerInterval);
-        connectionStatus.textContent = 'Reconectando...';
-        connectionStatus.style.color = 'yellow';
-        onPageLoad();
+    let seconds = time;
+    const decreaseTimer = () => {
+        if (socket.readyState === 1) {
+            clearInterval(timer);
+            return;
+        }
+        seconds--;
+        connectionCountdown.textContent = seconds.toString();
+        if (seconds < 1) {
+            connectionCountdown.textContent = '';
+            clearInterval(timer);
+            callbackAction();
+        }
     }
+    timer = setInterval(decreaseTimer, 1000);
 }
 
-function onPageLoad() {
-    connectionStatus.textContent = 'Conectando...';
-    connectionStatus.style.color = 'yellow';
+function newSocket() {
+    connectionStatus.textContent = 'DESCONECTADO';
+    connectionStatus.style.color = 'red';
+    connectionAction.textContent = 'Estabelecendo conexão... ';
     socket = new WebSocket('ws://192.168.4.1:81');
     socket.binaryType = "arraybuffer";
     socket.addEventListener('open', socketOpen, false);
+    socket.addEventListener('close', socketError, false);
     socket.addEventListener('message', socketReceive, false);
-    socket.addEventListener('close', socketClose, false);
     socket.addEventListener('error', socketError, false);
+    startTimer(6, () => socket.close());
 }
 
 function socketError(error) {
-    connectionStatus.textContent = `Falha na conexão: ${error}`;
-    connectionStatus.stylecolor = 'red';
+    connectionStatus.textContent = 'FALHA NA CONEXÃO';
+    connectionStatus.style.color = 'red';
+    connectionAction.textContent = 'Aguardando nova tentativa de conexão... '
+    startTimer(11, newSocket);
 }
 
-function socketClose() {
-    connectionStatus.textContent = 'Desconectado!';
-    connectionStatus.style.color = 'red';
-    startTimer();
+function socketOpen() {
+    connectionStatus.textContent = 'CONECTADO';
+    connectionStatus.style.color = 'green';
+    connectionAction.textContent = '';
+    connectionCountdown.textContent = '';
 }
 
 function socketReceive({data}) {
@@ -66,11 +80,6 @@ function updateGUI() {
             leds[index] === 255 ? buildings[index].classList.remove('paused') : buildings[index].classList.add('paused');
         }
     }
-}
-
-function socketOpen() {
-    connectionStatus.textContent = 'Conectado.';
-    connectionStatus.style.color = 'green';
 }
 
 function toggleLed(event) {
